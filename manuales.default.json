@@ -1,0 +1,34 @@
+[
+  {
+    "clave": "niveles-premiacion",
+    "ruta": "/maestros/niveles-premiacion",
+    "componente": "src/app/pages/maestros/niveles-premiacion/niveles-premiacion.component",
+    "pagina": "NIVELES PREMIACION",
+    "menu": "MAESTROS",
+    "opcion": "NIVELES PREMIACION",
+    "libro_id": 17,
+    "capitulo_id": 118,
+    "dialogos": [
+      {
+        "id": "nuevo",
+        "abrir": "button:has-text('Nuevo Registro')",
+        "nombre": "Nuevo Registro"
+      },
+      {
+        "id": "editar",
+        "abrir": "tbody tr:first-child button:has(.pi-pencil)",
+        "nombre": "Editar (lápiz de la fila)"
+      },
+      {
+        "id": "copiar",
+        "abrir": "button:has-text('Copiar niveles')",
+        "nombre": "Copiar niveles"
+      },
+      {
+        "id": "eliminar",
+        "abrir": "tbody tr:first-child button:has(.pi-trash)",
+        "nombre": "Eliminar (papelera de la fila)"
+      }
+    ]
+  }
+]

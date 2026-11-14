@@ -1,0 +1,18 @@
+{
+  "name": "manual-gen",
+  "version": "1.0.0",
+  "description": "Genera manuales de usuario desde el código Angular + capturas reales y los publica en BookStack",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.49.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

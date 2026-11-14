@@ -1,0 +1,9 @@
+{
+  "main": "dist/server.cjs",
+  "output": "dist/sea.blob",
+  "disableExperimentalSEAWarning": true,
+  "assets": {
+    "index.html": "public/index.html",
+    "manuales.default.json": "manuales.default.json"
+  }
+}

@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual Gen</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--ink:#1d2433;--mut:#667085;--line:#e3e7ef;--pri:#0f9d8a;--pri-ink:#fff;--bad:#d92d20;--ok:#12805c;--warn:#b54708;--shadow:0 1px 2px rgba(16,24,40,.06)}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#171c27;--ink:#e8ecf3;--mut:#9aa4b5;--line:#272e3d;--pri:#19b8a2;--pri-ink:#06201c;--bad:#ff7b72;--ok:#4cd3a0;--warn:#f0a35c;--shadow:none}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:14px 24px;background:var(--card);border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;font-weight:650}
+header .sp{flex:1}
+nav{display:flex;gap:4px;padding:0 24px;background:var(--card);border-bottom:1px solid var(--line)}
+nav button{background:none;border:0;padding:12px 14px;color:var(--mut);font:inherit;cursor:pointer;border-bottom:2px solid transparent}
+nav button.on{color:var(--ink);border-color:var(--pri);font-weight:600}
+main{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
+.card h2{font-size:14px;margin:0 0 12px;font-weight:650}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:4px;min-width:180px;flex:1}
+.f label{font-size:12px;color:var(--mut)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%}
+textarea{min-height:90px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--pri) 45%,transparent);border-color:var(--pri)}
+button.b{font:inherit;cursor:pointer;border-radius:7px;padding:8px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button.b:hover{border-color:var(--mut)}
+button.p{background:var(--pri);color:var(--pri-ink);border-color:var(--pri);font-weight:600}
+button.d{color:var(--bad)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg label{padding:8px 14px;cursor:pointer;color:var(--mut);font-size:13px;display:flex;gap:6px;align-items:center}
+.seg input{display:none;width:auto}
+.seg label:has(input:checked){background:var(--pri);color:var(--pri-ink);font-weight:600}
+.seg label.off{opacity:.45;cursor:not-allowed}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:99px;font-size:12px;border:1px solid var(--line);color:var(--mut)}
+.dot{width:8px;height:8px;border-radius:99px;background:var(--mut)}
+.chip.ok .dot{background:var(--ok)}.chip.bad .dot{background:var(--bad)}
+.log{background:#0b0f16;color:#c9d4e5;border-radius:8px;padding:12px;font:12px/1.55 ui-monospace,Consolas,monospace;max-height:190px;overflow:auto;white-space:pre-wrap;margin-top:12px}
+.log:empty{display:none}
+.log .e{color:#ff8b83}
+iframe{width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.meta{color:var(--mut);font-size:12px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;color:var(--mut);font-weight:600}
+td.act{text-align:right;white-space:nowrap}
+.tag{font-size:11px;padding:2px 7px;border-radius:99px;background:var(--bg);border:1px solid var(--line);color:var(--mut)}
+.hint{color:var(--mut);font-size:12px;margin:6px 0 0}
+.msg{margin-top:10px;font-size:13px}.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:0;width:min(560px,94vw)}
+dialog::backdrop{background:rgba(10,14,22,.55)}
+dialog form{padding:20px;display:flex;flex-direction:column;gap:12px}
+dialog h3{margin:0;font-size:16px}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.empty{color:var(--mut);padding:20px;text-align:center}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Manual Gen</h1>
+  <span class="chip" id="chipClaude"><span class="dot"></span><span id="chipTxt">Claude…</span></span>
+  <button class="b" id="btnLogin" hidden>Iniciar sesión con Claude</button>
+  <button class="b" id="btnLogout" hidden>Cerrar sesión</button>
+  <span class="sp"></span>
+  <span class="chip" id="chipEnv"></span>
+</header>
+<nav>
+  <button data-t="gen" class="on">Generar</button>
+  <button data-t="man">Manuales</button>
+  <button data-t="cfg">Configuración</button>
+</nav>
+<main>
+  <!-- GENERAR -->
+  <section id="t-gen">
+    <div class="card">
+      <div class="row">
+        <div class="f"><label>Formulario</label><select id="selManual"></select></div>
+        <div class="f" style="flex:0 0 auto;min-width:0">
+          <label>Redacción</label>
+          <div class="seg" id="segModo">
+            <label id="lblClaude"><input type="radio" name="modo" value="claude" checked>Claude Code</label>
+            <label><input type="radio" name="modo" value="plantillas">Plantillas</label>
+          </div>
+        </div>
+        <div class="f"><label>Entorno (capturas)</label><select id="selEnv"></select></div>
+        <div class="f"><label>BookStack (destino)</label><select id="selBs"></select></div>
+        <button class="b p" id="btnGen">Generar</button>
+      </div>
+      <p class="hint" id="hintModo"></p>
+      <div class="log" id="log"></div>
+    </div>
+    <div class="card hide" id="cardPrev">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h2 style="margin:0">Vista previa</h2>
+        <div class="row" style="align-items:center">
+          <span class="msg" id="pubMsg" style="margin:0"></span>
+          <button class="b p" id="btnPub">Publicar en BookStack</button>
+        </div>
+      </div>
+      <div class="meta" id="meta"></div>
+      <iframe id="prev"></iframe>
+      <p class="hint">Así quedará el contenido. Nada se envía a BookStack hasta que pulses «Publicar».</p>
+    </div>
+  </section>
+
+  <!-- MANUALES -->
+  <section id="t-man" class="hide">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h2 style="margin:0">Formularios configurados</h2><button class="b p" id="btnNuevoMan">Añadir formulario</button></div>
+      <table><thead><tr><th>Página en el manual</th><th>Ruta</th><th>Capturas</th><th></th></tr></thead><tbody id="tbMan"></tbody></table>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="t-cfg" class="hide">
+    <div class="card">
+      <h2>Repositorio del código (Angular)</h2>
+      <div class="row">
+        <div class="f" style="flex:3"><label>Ruta local del repositorio</label><input id="repoPath" placeholder="C:/ruta/al/sip-frontend"></div>
+        <div class="f"><label>Rama de referencia</label><input id="repoRef" placeholder="origin/develop"></div>
+      </div>
+      <p class="hint">El código se lee con <code>git show</code> desde esa rama: no se toca tu carpeta de trabajo ni tus cambios sin commitear.</p>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h2 style="margin:0">Entornos para las capturas</h2><button class="b" id="btnNuevoEnv">Añadir entorno</button></div>
+      <table><thead><tr><th>Nombre</th><th>URL</th><th>Usuario</th><th></th></tr></thead><tbody id="tbEnv"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h2 style="margin:0">Conexiones BookStack (API)</h2><button class="b" id="btnNuevoBs">Añadir conexión</button></div>
+      <table><thead><tr><th>Nombre</th><th>URL</th><th>Token ID</th><th></th></tr></thead><tbody id="tbBs"></tbody></table>
+      <div class="msg" id="bsMsg"></div>
+    </div>
+    <div class="row"><button class="b p" id="btnSaveCfg">Guardar configuración</button><span class="msg" id="cfgMsg" style="margin:0;align-self:center"></span></div>
+  </section>
+</main>
+
+<dialog id="dlg"><form method="dialog" id="dlgForm"></form></dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const api = async (path, body) => {
+  const r = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Error');
+  return j;
+};
+const uid = (t) => (t || 'x').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'x' + Date.now();
+let S = null; // { settings, manuales, claude }
+
+// ---------- pestañas ----------
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
+  for (const t of ['gen', 'man', 'cfg']) $('#t-' + t).classList.toggle('hide', t !== b.dataset.t);
+});
+
+// ---------- carga ----------
+async function cargar() {
+  S = await api('/api/estado');
+  pintar();
+}
+function pintar() {
+  const { settings: s, manuales: ms, claude: c } = S;
+  // claude
+  $('#chipClaude').className = 'chip ' + (c.sesion ? 'ok' : 'bad');
+  $('#chipTxt').textContent = !c.instalado ? 'Claude Code no instalado' : c.sesion ? 'Claude conectado (sesión temporal)' : 'Claude sin sesión';
+  $('#btnLogin').hidden = !c.instalado || c.sesion;
+  $('#btnLogout').hidden = !c.sesion;
+  const hayClaude = c.instalado && c.sesion;
+  $('#lblClaude').classList.toggle('off', !hayClaude);
+  document.querySelector('input[value=claude]').disabled = !hayClaude;
+  if (!hayClaude) document.querySelector('input[value=plantillas]').checked = true;
+  $('#hintModo').textContent = hayClaude
+    ? 'Claude Code redacta con lenguaje natural usando tu suscripción (sin costo extra de API). Plantillas es instantáneo y más literal.'
+    : (c.instalado ? 'Opcional: inicia sesión con Claude para redactar con IA. La sesión dura solo mientras este programa esté abierto. Sin sesión se usan plantillas.' : 'Claude Code no está instalado en este equipo: se usarán plantillas. (Para IA instala Claude Code: https://claude.com/claude-code)');
+  // selects
+  const sel = (el, arr, val, lbl) => { el.innerHTML = arr.map((x) => `<option value="${esc(x.id ?? x.clave)}" ${(x.id ?? x.clave) === val ? 'selected' : ''}>${esc(lbl(x))}</option>`).join(''); };
+  const prev = $('#selManual').value;
+  sel($('#selManual'), ms, prev || ms[0]?.clave, (m) => m.pagina);
+  sel($('#selEnv'), s.entornos, s.entornoActivo, (e) => e.nombre);
+  sel($('#selBs'), s.bookstacks, s.bookstackActivo, (b) => b.nombre);
+  const env = s.entornos.find((e) => e.id === s.entornoActivo);
+  $('#chipEnv').innerHTML = env ? `<span class="dot"></span>${esc(env.nombre)} · ${esc(env.usuario)}` : 'Sin entorno';
+  // manuales
+  $('#tbMan').innerHTML = ms.length ? ms.map((m) => `<tr><td><b>${esc(m.pagina)}</b><br><span class="hint">${esc(m.menu)} › ${esc(m.opcion)}</span></td><td><code>${esc(m.ruta)}</code></td><td><span class="tag">${1 + (m.dialogos?.length ?? 0)}</span></td><td class="act"><button class="b" data-ed="${esc(m.clave)}">Editar</button> <button class="b d" data-del="${esc(m.clave)}">Quitar</button></td></tr>`).join('') : '<tr><td colspan="4" class="empty">Aún no hay formularios.</td></tr>';
+  // config
+  $('#repoPath').value = s.repo.path; $('#repoRef').value = s.repo.ref;
+  $('#tbEnv').innerHTML = s.entornos.map((e) => `<tr><td><b>${esc(e.nombre)}</b></td><td>${esc(e.url)}</td><td>${esc(e.usuario)}</td><td class="act"><button class="b" data-ee="${esc(e.id)}">Editar</button> <button class="b d" data-de="${esc(e.id)}">Quitar</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Sin entornos.</td></tr>';
+  $('#tbBs').innerHTML = s.bookstacks.map((b) => `<tr><td><b>${esc(b.nombre)}</b></td><td>${esc(b.url)}</td><td><code>${esc(b.tokenId)}</code></td><td class="act"><button class="b" data-pb="${esc(b.id)}">Probar</button> <button class="b" data-eb="${esc(b.id)}">Editar</button> <button class="b d" data-db="${esc(b.id)}">Quitar</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Sin conexiones.</td></tr>';
+  mostrarMeta();
+}
+
+// ---------- claude ----------
+$('#btnLogin').onclick = async () => {
+  await api('/api/claude/login', {});
+  $('#chipTxt').textContent = 'Esperando inicio de sesión…';
+  const t = setInterval(async () => { const st = await api('/api/estado'); if (st.claude.sesion) { clearInterval(t); S = st; pintar(); } }, 3000);
+  setTimeout(() => clearInterval(t), 300000);
+};
+
+$('#btnLogout').onclick = async () => { await api('/api/claude/logout', {}); await cargar(); };
+
+// ---------- generar ----------
+let jobPoll;
+function seguirJob(id, log, fin) {
+  clearInterval(jobPoll);
+  let n = 0;
+  jobPoll = setInterval(async () => {
+    const j = await api('/api/job/' + id);
+    j.log.slice(n).forEach((l) => log(l)); n = j.log.length;
+    if (j.estado !== 'corriendo') { clearInterval(jobPoll); fin(j); }
+  }, 700);
+}
+const logEl = $('#log');
+const addLog = (l) => { const d = document.createElement('div'); if (l.startsWith('ERROR')) d.className = 'e'; d.textContent = l; logEl.append(d); logEl.scrollTop = 1e9; };
+
+async function guardarSeleccion() {
+  S.settings.entornoActivo = $('#selEnv').value; S.settings.bookstackActivo = $('#selBs').value;
+  await api('/api/settings', S.settings);
+}
+$('#selEnv').onchange = $('#selBs').onchange = async () => { await guardarSeleccion(); await cargar(); };
+$('#selManual').onchange = mostrarMeta;
+
+$('#btnGen').onclick = async () => {
+  const clave = $('#selManual').value;
+  if (!clave) return;
+  logEl.innerHTML = ''; $('#pubMsg').textContent = '';
+  $('#btnGen').disabled = true;
+  try {
+    await guardarSeleccion();
+    const modo = document.querySelector('input[name=modo]:checked').value;
+    const { job } = await api('/api/generar', { clave, modo });
+    seguirJob(job, addLog, async () => { $('#btnGen').disabled = false; await mostrarMeta(); });
+  } catch (e) { addLog('ERROR: ' + e.message); $('#btnGen').disabled = false; }
+};
+
+async function mostrarMeta() {
+  const clave = $('#selManual').value;
+  if (!clave) return;
+  const meta = await api('/api/meta/' + clave).catch(() => null);
+  $('#cardPrev').classList.toggle('hide', !meta);
+  if (!meta) return;
+  $('#meta').textContent = `Generado ${new Date(meta.fecha).toLocaleString()} · redacción: ${meta.usado === 'claude' ? 'Claude Code' : 'plantillas'} · ${meta.shots.length} capturas`;
+  $('#prev').src = '/preview/' + clave + '?t=' + Date.now();
+}
+
+$('#btnPub').onclick = async () => {
+  const clave = $('#selManual').value;
+  const m = S.manuales.find((x) => x.clave === clave);
+  const bs = S.settings.bookstacks.find((b) => b.id === S.settings.bookstackActivo);
+  const msg = $('#pubMsg'); msg.className = 'msg'; msg.textContent = 'Comprobando…';
+  try {
+    const chk = await api('/api/bookstack/probar', { clave });
+    const q = chk.existe ? `La página «${m.pagina}» YA EXISTE en ${bs.nombre}. Se sobrescribirá su contenido (BookStack conserva el historial de revisiones).\n\n¿Publicar?` : `Se creará la página «${m.pagina}» en ${bs.nombre}.\n\n¿Publicar?`;
+    if (!confirm(q)) { msg.textContent = ''; return; }
+    $('#btnPub').disabled = true; msg.textContent = 'Publicando…';
+    const { job } = await api('/api/publicar', { clave });
+    seguirJob(job, addLog, (j) => {
+      $('#btnPub').disabled = false;
+      if (j.estado === 'ok') { msg.className = 'msg ok'; msg.innerHTML = `Publicado · <a href="${esc(j.resultado.url)}" target="_blank">abrir página</a>`; }
+      else { msg.className = 'msg bad'; msg.textContent = j.error; }
+    });
+  } catch (e) { msg.className = 'msg bad'; msg.textContent = e.message; }
+};
+
+// ---------- diálogos de edición ----------
+function abrirForm(titulo, campos, valores, onOk) {
+  const f = $('#dlgForm');
+  f.innerHTML = `<h3>${esc(titulo)}</h3>` + campos.map((c) => `<div class="f"><label>${esc(c.l)}</label>${c.area ? `<textarea name="${c.n}" placeholder="${esc(c.ph ?? '')}">${esc(valores[c.n])}</textarea>` : `<input name="${c.n}" type="${c.t ?? 'text'}" value="${esc(valores[c.n])}" placeholder="${esc(c.ph ?? '')}">`}${c.h ? `<span class="hint">${esc(c.h)}</span>` : ''}</div>`).join('') + `<div class="foot"><button class="b" value="x" formnovalidate>Cancelar</button><button class="b p" value="ok">Guardar</button></div>`;
+  const d = $('#dlg');
+  f.onsubmit = (ev) => {
+    if (ev.submitter?.value !== 'ok') return;
+    onOk(Object.fromEntries(new FormData(f).entries()));
+  };
+  d.showModal();
+}
+const guardarCfg = async () => { S.settings.repo = { path: $('#repoPath').value.trim(), ref: $('#repoRef').value.trim() || 'origin/develop' }; await api('/api/settings', S.settings); await cargar(); };
+
+// entornos
+const camposEnv = [
+  { n: 'nombre', l: 'Nombre', ph: 'Dev' }, { n: 'url', l: 'URL base de la aplicación', ph: 'https://dev-sip.sgtech.com.pe' },
+  { n: 'usuario', l: 'Usuario' }, { n: 'clave', l: 'Contraseña', t: 'password', h: 'Déjala vacía para conservar la actual.' },
+  { n: 'selUser', l: 'Selector del campo usuario (login)' }, { n: 'selPass', l: 'Selector del campo contraseña' }, { n: 'selSubmit', l: 'Selector del botón de ingreso' },
+];
+const editarEnv = (id) => {
+  const e = S.settings.entornos.find((x) => x.id === id) ?? { selUser: '#user', selPass: '#passwordInput', selSubmit: 'button[type=submit]' };
+  abrirForm(id ? 'Editar entorno' : 'Nuevo entorno', camposEnv, { ...e, clave: '' }, async (v) => {
+    const nuevo = { ...e, ...v, id: e.id ?? uid(v.nombre) };
+    S.settings.entornos = [...S.settings.entornos.filter((x) => x.id !== nuevo.id), nuevo];
+    if (!S.settings.entornoActivo) S.settings.entornoActivo = nuevo.id;
+    await guardarCfg();
+  });
+};
+$('#btnNuevoEnv').onclick = () => editarEnv();
+// bookstack
+const camposBs = [{ n: 'nombre', l: 'Nombre' }, { n: 'url', l: 'URL de BookStack', ph: 'https://bookstack.miempresa.com' }, { n: 'tokenId', l: 'Token ID' }, { n: 'tokenSecret', l: 'Token Secret', t: 'password', h: 'Perfil → Tokens de API. Déjalo vacío para conservar el actual.' }];
+const editarBs = (id) => {
+  const b = S.settings.bookstacks.find((x) => x.id === id) ?? {};
+  abrirForm(id ? 'Editar conexión' : 'Nueva conexión BookStack', camposBs, { ...b, tokenSecret: '' }, async (v) => {
+    const nuevo = { ...b, ...v, id: b.id ?? uid(v.nombre) };
+    S.settings.bookstacks = [...S.settings.bookstacks.filter((x) => x.id !== nuevo.id), nuevo];
+    if (!S.settings.bookstackActivo) S.settings.bookstackActivo = nuevo.id;
+    await guardarCfg();
+  });
+};
+$('#btnNuevoBs').onclick = () => editarBs();
+// manuales
+const camposMan = [
+  { n: 'pagina', l: 'Nombre de la página en BookStack', ph: 'NIVELES PREMIACION' },
+  { n: 'menu', l: 'Menú donde está la opción', ph: 'MAESTROS' }, { n: 'opcion', l: 'Nombre de la opción', ph: 'NIVELES PREMIACION' },
+  { n: 'ruta', l: 'Ruta en la aplicación', ph: '/maestros/niveles-premiacion' },
+  { n: 'componente', l: 'Componente Angular (sin extensión)', ph: 'src/app/pages/maestros/niveles-premiacion/niveles-premiacion.component' },
+  { n: 'libro_id', l: 'ID del libro en BookStack', t: 'number' }, { n: 'capitulo_id', l: 'ID del capítulo en BookStack', t: 'number' },
+  { n: 'dialogos', l: 'Ventanas a capturar (una por línea: id | selector del botón | nombre)', area: true, ph: "nuevo | button:has-text('Nuevo Registro') | Nuevo Registro", h: 'Solo se abren y se cierran; nunca se guarda nada.' },
+];
+const editarMan = (clave) => {
+  const m = S.manuales.find((x) => x.clave === clave) ?? {};
+  const v = { ...m, dialogos: (m.dialogos ?? []).map((d) => `${d.id} | ${d.abrir} | ${d.nombre}`).join('\n') };
+  abrirForm(clave ? 'Editar formulario' : 'Nuevo formulario', camposMan, v, async (x) => {
+    const dialogos = x.dialogos.split('\n').map((l) => l.split('|').map((s) => s.trim())).filter((p) => p.length >= 2 && p[0]).map(([id, abrir, nombre]) => ({ id, abrir, nombre: nombre || id }));
+    const manual = { ...m, ...x, clave: m.clave ?? uid(x.pagina), libro_id: +x.libro_id, capitulo_id: +x.capitulo_id, dialogos };
+    await api('/api/manuales', { clave: manual.clave, claveAnterior: m.clave, manual });
+    await cargar();
+  });
+};
+$('#btnNuevoMan').onclick = () => editarMan();
+
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  const d = t.dataset;
+  if (d.ed) editarMan(d.ed);
+  if (d.del && confirm('¿Quitar este formulario de la lista? (No borra nada en BookStack)')) { await api('/api/manuales/borrar', { clave: d.del }); cargar(); }
+  if (d.ee) editarEnv(d.ee);
+  if (d.de && confirm('¿Quitar este entorno?')) { S.settings.entornos = S.settings.entornos.filter((x) => x.id !== d.de); if (S.settings.entornoActivo === d.de) S.settings.entornoActivo = S.settings.entornos[0]?.id ?? ''; guardarCfg(); }
+  if (d.eb) editarBs(d.eb);
+  if (d.db && confirm('¿Quitar esta conexión?')) { S.settings.bookstacks = S.settings.bookstacks.filter((x) => x.id !== d.db); if (S.settings.bookstackActivo === d.db) S.settings.bookstackActivo = S.settings.bookstacks[0]?.id ?? ''; guardarCfg(); }
+  if (d.pb) {
+    const m = $('#bsMsg'); m.className = 'msg'; m.textContent = 'Probando…';
+    try { await api('/api/bookstack/probar', { id: d.pb }); m.className = 'msg ok'; m.textContent = 'Conexión correcta.'; } catch (er) { m.className = 'msg bad'; m.textContent = er.message; }
+  }
+});
+$('#btnSaveCfg').onclick = async () => { await guardarCfg(); $('#cfgMsg').className = 'msg ok'; $('#cfgMsg').textContent = 'Guardado'; setTimeout(() => ($('#cfgMsg').textContent = ''), 2500); };
+
+cargar();
+</script>
+</body>
+</html>
