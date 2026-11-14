@@ -324,7 +324,7 @@ const camposMan = [
   { n: 'ruta', l: 'Ruta en la aplicación', ph: '/maestros/niveles-premiacion' },
   { n: 'componente', l: 'Componente Angular (sin extensión)', ph: 'src/app/pages/maestros/niveles-premiacion/niveles-premiacion.component' },
   { n: 'libro_id', l: 'Libro de BookStack', opts: [] }, { n: 'capitulo_id', l: 'Capítulo de BookStack', opts: [] },
-  { n: 'dialogos', l: 'Ventanas a capturar (una por línea: id | selector del botón | nombre)', area: true, ph: "nuevo | button:has-text('Nuevo Registro') | Nuevo Registro", h: 'Solo se abren y se cierran; nunca se guarda nada.' },
+  { n: 'dialogos', l: 'Ventanas a capturar (una por línea: id | selector del botón | nombre)', area: true, ph: "nuevo | button:has-text('Nuevo Registro') | Nuevo Registro", h: 'Opcional. Si lo dejas vacío se detectan solos los botones «Nuevo/Agregar/Registrar/Crear». Solo se abren y se cierran; nunca se guarda nada.' },
 ];
 const editarMan = async (clave) => {
   const m = S.manuales.find((x) => x.clave === clave) ?? {};
