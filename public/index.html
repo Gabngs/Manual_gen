@@ -90,6 +90,7 @@ dialog h3{margin:0;font-size:16px}
         <button class="b p" id="btnGen">Generar</button>
       </div>
       <p class="hint" id="hintModo"></p>
+      <p class="msg bad" id="hintCfg" hidden>Primero registra un <b>entorno</b> (URL, usuario y contraseña) y una <b>conexión BookStack</b> (URL, Token ID y Secret) en la pestaña <b>Configuración</b>. Se guardan una sola vez junto al programa.</p>
       <div class="log" id="log"></div>
     </div>
     <div class="card hide" id="cardPrev">
@@ -182,6 +183,9 @@ function pintar() {
   sel($('#selManual'), ms, prev || ms[0]?.clave, (m) => m.pagina);
   sel($('#selEnv'), s.entornos, s.entornoActivo, (e) => e.nombre);
   sel($('#selBs'), s.bookstacks, s.bookstackActivo, (b) => b.nombre);
+  const falta = !s.entornos.length || !s.bookstacks.length;
+  $('#btnGen').disabled = falta;
+  $('#hintCfg').hidden = !falta;
   const env = s.entornos.find((e) => e.id === s.entornoActivo);
   $('#chipEnv').innerHTML = env ? `<span class="dot"></span>${esc(env.nombre)} · ${esc(env.usuario)}` : 'Sin entorno';
   // manuales
@@ -267,15 +271,16 @@ $('#btnPub').onclick = async () => {
 };
 
 // ---------- diálogos de edición ----------
-function abrirForm(titulo, campos, valores, onOk) {
+function abrirForm(titulo, campos, valores, onOk, onOpen) {
   const f = $('#dlgForm');
-  f.innerHTML = `<h3>${esc(titulo)}</h3>` + campos.map((c) => `<div class="f"><label>${esc(c.l)}</label>${c.area ? `<textarea name="${c.n}" placeholder="${esc(c.ph ?? '')}">${esc(valores[c.n])}</textarea>` : `<input name="${c.n}" type="${c.t ?? 'text'}" value="${esc(valores[c.n])}" placeholder="${esc(c.ph ?? '')}">`}${c.h ? `<span class="hint">${esc(c.h)}</span>` : ''}</div>`).join('') + `<div class="foot"><button class="b" value="x" formnovalidate>Cancelar</button><button class="b p" value="ok">Guardar</button></div>`;
+  f.innerHTML = `<h3>${esc(titulo)}</h3>` + campos.map((c) => `<div class="f"><label>${esc(c.l)}</label>${c.opts ? `<select name="${c.n}" id="f_${c.n}">${c.opts.map((o) => `<option value="${esc(o.id)}" ${String(o.id) === String(valores[c.n]) ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('')}</select>` : c.area ? `<textarea name="${c.n}" placeholder="${esc(c.ph ?? '')}">${esc(valores[c.n])}</textarea>` : `<input name="${c.n}" type="${c.t ?? 'text'}" value="${esc(valores[c.n])}" placeholder="${esc(c.ph ?? '')}">`}${c.h ? `<span class="hint">${esc(c.h)}</span>` : ''}</div>`).join('') + `<div class="foot"><button class="b" value="x" formnovalidate>Cancelar</button><button class="b p" value="ok">Guardar</button></div>`;
   const d = $('#dlg');
   f.onsubmit = (ev) => {
     if (ev.submitter?.value !== 'ok') return;
     onOk(Object.fromEntries(new FormData(f).entries()));
   };
   d.showModal();
+  onOpen?.(f);
 }
 const guardarCfg = async () => { S.settings.repo = { path: $('#repoPath').value.trim(), ref: $('#repoRef').value.trim() || 'origin/develop' }; await api('/api/settings', S.settings); await cargar(); };
 
@@ -313,17 +318,34 @@ const camposMan = [
   { n: 'menu', l: 'Menú donde está la opción', ph: 'MAESTROS' }, { n: 'opcion', l: 'Nombre de la opción', ph: 'NIVELES PREMIACION' },
   { n: 'ruta', l: 'Ruta en la aplicación', ph: '/maestros/niveles-premiacion' },
   { n: 'componente', l: 'Componente Angular (sin extensión)', ph: 'src/app/pages/maestros/niveles-premiacion/niveles-premiacion.component' },
-  { n: 'libro_id', l: 'ID del libro en BookStack', t: 'number' }, { n: 'capitulo_id', l: 'ID del capítulo en BookStack', t: 'number' },
+  { n: 'libro_id', l: 'Libro de BookStack', opts: [] }, { n: 'capitulo_id', l: 'Capítulo de BookStack', opts: [] },
   { n: 'dialogos', l: 'Ventanas a capturar (una por línea: id | selector del botón | nombre)', area: true, ph: "nuevo | button:has-text('Nuevo Registro') | Nuevo Registro", h: 'Solo se abren y se cierran; nunca se guarda nada.' },
 ];
-const editarMan = (clave) => {
+const editarMan = async (clave) => {
   const m = S.manuales.find((x) => x.clave === clave) ?? {};
-  const v = { ...m, dialogos: (m.dialogos ?? []).map((d) => `${d.id} | ${d.abrir} | ${d.nombre}`).join('\n') };
-  abrirForm(clave ? 'Editar formulario' : 'Nuevo formulario', camposMan, v, async (x) => {
-    const dialogos = x.dialogos.split('\n').map((l) => l.split('|').map((s) => s.trim())).filter((p) => p.length >= 2 && p[0]).map(([id, abrir, nombre]) => ({ id, abrir, nombre: nombre || id }));
-    const manual = { ...m, ...x, clave: m.clave ?? uid(x.pagina), libro_id: +x.libro_id, capitulo_id: +x.capitulo_id, dialogos };
+  let libros = [], capsIni = [], aviso = '';
+  try {
+    libros = await api('/api/bookstack/libros');
+    capsIni = libros.length ? await api('/api/bookstack/capitulos?libro=' + (m.libro_id || libros[0].id)) : [];
+  } catch (e) { aviso = e.message; }
+  if (aviso) { alert('No se pudieron cargar los libros de BookStack:
+' + aviso + '
+
+Registra y elige una conexión en Configuración.'); return; }
+  const campos = camposMan.map((c) => c.n === 'libro_id' ? { ...c, opts: libros } : c.n === 'capitulo_id' ? { ...c, opts: [{ id: '', nombre: '— sin capítulo (directo en el libro) —' }, ...capsIni] } : c);
+  const v = { ...m, dialogos: (m.dialogos ?? []).map((d) => `${d.id} | ${d.abrir} | ${d.nombre}`).join('
+') };
+  abrirForm(clave ? 'Editar formulario' : 'Nuevo formulario', campos, v, async (x) => {
+    const dialogos = x.dialogos.split('
+').map((l) => l.split('|').map((s) => s.trim())).filter((p) => p.length >= 2 && p[0]).map(([id, abrir, nombre]) => ({ id, abrir, nombre: nombre || id }));
+    const manual = { ...m, ...x, clave: m.clave ?? uid(x.pagina), libro_id: +x.libro_id, capitulo_id: x.capitulo_id ? +x.capitulo_id : null, dialogos };
     await api('/api/manuales', { clave: manual.clave, claveAnterior: m.clave, manual });
     await cargar();
+  }, (f) => {
+    f.querySelector('#f_libro_id').onchange = async (ev) => {
+      const caps = await api('/api/bookstack/capitulos?libro=' + ev.target.value);
+      f.querySelector('#f_capitulo_id').innerHTML = '<option value="">— sin capítulo (directo en el libro) —</option>' + caps.map((c) => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+    };
   });
 };
 $('#btnNuevoMan').onclick = () => editarMan();

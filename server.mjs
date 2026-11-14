@@ -5,7 +5,7 @@ import { exec } from 'node:child_process';
 import { asset, OUT, loadSettings, saveSettings, loadManuales, saveManuales, publicSettings, mergeSettings } from './lib/config.mjs';
 import { claudeStatus, claudeLogin, iniciarSesionAislada, cerrarSesion, borrarSesionAlSalir } from './lib/claude.mjs';
 import { generar, leerMeta, conImagenes } from './lib/generator.mjs';
-import { publicar, probar } from './lib/bookstack.mjs';
+import { publicar, probar, libros, capitulos } from './lib/bookstack.mjs';
 
 const PORT = Number(process.env.PORT) || 4317;
 const jobs = new Map(); // id -> { log:[], estado:'corriendo'|'ok'|'error', resultado, error }
@@ -29,6 +29,12 @@ function lanzar(fn) {
 
 const manualDe = (clave) => loadManuales().find((m) => m.clave === clave);
 const bookstackActivo = (s) => s.bookstacks.find((b) => b.id === s.bookstackActivo);
+
+const activo = () => {
+  const bs = bookstackActivo(loadSettings());
+  if (!bs) throw new Error('Registra y elige una conexión BookStack en Configuración');
+  return bs;
+};
 
 const rutas = {
   'GET /api/estado': async () => ({ settings: publicSettings(loadSettings()), manuales: loadManuales(), claude: await claudeStatus() }),
@@ -54,6 +60,8 @@ const rutas = {
     if (!manual || !bs) throw new Error('Falta el manual o la conexión a BookStack activa');
     return { job: lanzar((log) => publicar({ manual, bookstack: bs, log })) };
   },
+  'GET /api/bookstack/libros': async () => libros(activo()),
+  'GET /api/bookstack/capitulos': async (_b, url) => capitulos(activo(), url.searchParams.get('libro')),
   'POST /api/bookstack/probar': async (b) => {
     const s = loadSettings();
     const bs = b.id ? { ...s.bookstacks.find((x) => x.id === b.id) } : bookstackActivo(s);
@@ -71,7 +79,7 @@ createServer(async (req, res) => {
   const p = url.pathname;
   try {
     const key = `${req.method} ${p}`;
-    if (rutas[key]) return send(res, 200, await rutas[key](req.method === 'POST' ? await readBody(req) : {}));
+    if (rutas[key]) return send(res, 200, await rutas[key](req.method === 'POST' ? await readBody(req) : {}, url));
     let m;
     if ((m = p.match(/^\/api\/job\/(\w+)$/))) {
       const j = jobs.get(m[1]);
