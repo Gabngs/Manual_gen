@@ -320,9 +320,12 @@ $('#btnNuevoBs').onclick = () => editarBs();
 // manuales
 const camposMan = [
   { n: 'pagina', l: 'Nombre de la página en BookStack', ph: 'NIVELES PREMIACION' },
-  { n: 'menu', l: 'Menú donde está la opción', ph: 'MAESTROS' }, { n: 'opcion', l: 'Nombre de la opción', ph: 'NIVELES PREMIACION' },
+  { n: 'menu', l: 'Menú donde está la opción', ph: 'MAESTROS' },
+  { n: 'dentro_de', l: 'Dentro de (opcional)', ph: 'Personal', h: 'Si la opción está en un grupo dentro del menú. Se redacta «En REPORTES, dentro de Personal, se encuentra…».' },
+  { n: 'opcion', l: 'Nombre de la opción', ph: 'NIVELES PREMIACION' },
   { n: 'ruta', l: 'Ruta en la aplicación', ph: '/maestros/niveles-premiacion' },
   { n: 'componente', l: 'Componente Angular (sin extensión)', ph: 'src/app/pages/maestros/niveles-premiacion/niveles-premiacion.component' },
+  { n: 'pestana', l: 'Pestaña a abrir (opcional)', ph: 'Evaluación para Tiendas', h: 'Si el formulario tiene pestañas y el manual es de una sola. Usa como componente el de esa pestaña (carpeta hija).' },
   { n: 'libro_id', l: 'Libro de BookStack', opts: [] }, { n: 'capitulo_id', l: 'Capítulo de BookStack', opts: [] },
   { n: 'dialogos', l: 'Ventanas a capturar (una por línea: id | selector del botón | nombre)', area: true, ph: "nuevo | button:has-text('Nuevo Registro') | Nuevo Registro", h: 'Opcional. Si lo dejas vacío se detectan solos los botones «Nuevo/Agregar/Registrar/Crear». Solo se abren y se cierran; nunca se guarda nada.' },
 ];
