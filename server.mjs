@@ -37,7 +37,8 @@ const activo = () => {
 };
 
 const rutas = {
-  'GET /api/estado': async () => ({ settings: publicSettings(loadSettings()), manuales: loadManuales(), claude: await claudeStatus() }),
+  'GET /api/estado': async () => ({ settings: publicSettings(loadSettings()), manuales: loadManuales() }),
+  'GET /api/claude': async () => claudeStatus(),
   'POST /api/settings': async (b) => { saveSettings(mergeSettings(loadSettings(), b)); return { ok: true }; },
   'POST /api/manuales': async (b) => {
     if (!safe(b.clave)) throw new Error('La clave solo admite letras, números, - y _');

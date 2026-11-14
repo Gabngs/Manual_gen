@@ -160,14 +160,19 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
 
 // ---------- carga ----------
 async function cargar() {
-  S = await api('/api/estado');
+  const claude = S?.claude ?? { instalado: true, sesion: false, cargando: true };
+  S = { ...(await api('/api/estado')), claude };
   pintar();
+  refrescarClaude();
+}
+async function refrescarClaude() {
+  try { S.claude = await api('/api/claude'); pintar(); } catch { /* sin Claude */ }
 }
 function pintar() {
   const { settings: s, manuales: ms, claude: c } = S;
   // claude
   $('#chipClaude').className = 'chip ' + (c.sesion ? 'ok' : 'bad');
-  $('#chipTxt').textContent = !c.instalado ? 'Claude Code no instalado' : c.sesion ? 'Claude conectado (sesión temporal)' : 'Claude sin sesión';
+  $('#chipTxt').textContent = c.cargando ? 'Comprobando Claude…' : !c.instalado ? 'Claude Code no instalado' : c.sesion ? 'Claude conectado (sesión temporal)' : 'Claude sin sesión';
   $('#btnLogin').hidden = !c.instalado || c.sesion;
   $('#btnLogout').hidden = !c.sesion;
   const hayClaude = c.instalado && c.sesion;
@@ -201,7 +206,7 @@ function pintar() {
 $('#btnLogin').onclick = async () => {
   await api('/api/claude/login', {});
   $('#chipTxt').textContent = 'Esperando inicio de sesión…';
-  const t = setInterval(async () => { const st = await api('/api/estado'); if (st.claude.sesion) { clearInterval(t); S = st; pintar(); } }, 3000);
+  const t = setInterval(async () => { const c = await api('/api/claude'); if (c.sesion) { clearInterval(t); S.claude = c; pintar(); } }, 3000);
   setTimeout(() => clearInterval(t), 300000);
 };
 
@@ -328,16 +333,11 @@ const editarMan = async (clave) => {
     libros = await api('/api/bookstack/libros');
     capsIni = libros.length ? await api('/api/bookstack/capitulos?libro=' + (m.libro_id || libros[0].id)) : [];
   } catch (e) { aviso = e.message; }
-  if (aviso) { alert('No se pudieron cargar los libros de BookStack:
-' + aviso + '
-
-Registra y elige una conexión en Configuración.'); return; }
+  if (aviso) { alert('No se pudieron cargar los libros de BookStack:\n' + aviso + '\n\nRegistra y elige una conexión en Configuración.'); return; }
   const campos = camposMan.map((c) => c.n === 'libro_id' ? { ...c, opts: libros } : c.n === 'capitulo_id' ? { ...c, opts: [{ id: '', nombre: '— sin capítulo (directo en el libro) —' }, ...capsIni] } : c);
-  const v = { ...m, dialogos: (m.dialogos ?? []).map((d) => `${d.id} | ${d.abrir} | ${d.nombre}`).join('
-') };
+  const v = { ...m, dialogos: (m.dialogos ?? []).map((d) => `${d.id} | ${d.abrir} | ${d.nombre}`).join('\n') };
   abrirForm(clave ? 'Editar formulario' : 'Nuevo formulario', campos, v, async (x) => {
-    const dialogos = x.dialogos.split('
-').map((l) => l.split('|').map((s) => s.trim())).filter((p) => p.length >= 2 && p[0]).map(([id, abrir, nombre]) => ({ id, abrir, nombre: nombre || id }));
+    const dialogos = x.dialogos.split('\n').map((l) => l.split('|').map((s) => s.trim())).filter((p) => p.length >= 2 && p[0]).map(([id, abrir, nombre]) => ({ id, abrir, nombre: nombre || id }));
     const manual = { ...m, ...x, clave: m.clave ?? uid(x.pagina), libro_id: +x.libro_id, capitulo_id: x.capitulo_id ? +x.capitulo_id : null, dialogos };
     await api('/api/manuales', { clave: manual.clave, claveAnterior: m.clave, manual });
     await cargar();
