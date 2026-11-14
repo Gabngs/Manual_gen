@@ -10,7 +10,7 @@ Genera el manual de usuario de un formulario Angular y lo publica en BookStack:
 ## Uso
 
 **Descarga** `ManualGen.exe` desde [Releases](../../releases) y ábrelo. Se abre la interfaz en `http://localhost:4317`.
-Los datos (configuración, capturas) se guardan junto al .exe en `data/` y `out/`.
+La configuración se guarda en `%APPDATA%\ManualGen\`, **cifrada con DPAPI de Windows** (ligada a tu usuario y a tu equipo: copiar el archivo a otra PC no sirve). Está fuera del .exe, así que sobrevive a las actualizaciones. Si existía una carpeta `data/` de una versión anterior junto al .exe, se migra sola y se borra la copia en texto plano.
 
 Requisitos en el equipo: Chrome o Edge, y `git` con acceso al repo del código (clonado localmente).
 
@@ -33,4 +33,4 @@ npm run build      # genera dist/ManualGen.exe (esbuild + Node SEA)
 ```
 Para publicar una versión: `git tag v1.0.0 && git push --tags` (GitHub Actions compila y adjunta el .exe al Release).
 
-> Las credenciales se guardan en texto plano en `data/settings.json` (excluido de git). No compartas esa carpeta.
+> Límite: quien use tu mismo usuario de Windows con la sesión iniciada puede ejecutar la app (necesita descifrar para trabajar). El cifrado evita que se copie el archivo a otro equipo o usuario.
