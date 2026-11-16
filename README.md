@@ -14,10 +14,19 @@ La configuración se guarda en `%APPDATA%\ManualGen\`, **cifrada con DPAPI de Wi
 
 Requisitos en el equipo: Chrome o Edge, y `git` con acceso al repo del código (clonado localmente).
 
-### Claude (opcional)
-- Pulsa **Iniciar sesión con Claude**. Necesita [Claude Code](https://claude.com/claude-code) instalado.
-- La sesión es **temporal y aislada**: vive en una carpeta propia que se borra al cerrar el programa. Nunca usa la sesión de Claude Code que ya tengas en tu equipo.
-- Sin sesión (o sin Claude Code) se usan **plantillas**.
+### IA para redactar (opcional): Claude, Gemini o ChatGPT
+- Elige la IA en la cabecera y pulsa **Iniciar sesión**. Cada una usa su herramienta de línea de comandos y tu suscripción (sin API key):
+  - **Claude**: [Claude Code](https://claude.com/claude-code).
+  - **Gemini**: `npm i -g @google/gemini-cli` (en su primera pantalla elige «Login with Google»).
+  - **ChatGPT**: `npm i -g @openai/codex` (inicia sesión con tu cuenta de ChatGPT).
+- La sesión es **temporal y aislada**: vive en una carpeta propia que se borra al cerrar el programa. Nunca usa la sesión que ya tengas en tu equipo.
+- Sin sesión (o sin la herramienta) se usan **plantillas**.
+
+### Capturas subidas a mano
+En *Generar* elige **Capturas → Subir imágenes**: arrastra, elige o pega (Ctrl+V) las imágenes, ordénalas y, si quieres, añade una nota por paso. La IA las lee en orden (y también el código del componente si hay repositorio configurado). Sirve para flujos que la captura automática no cubre. No necesita entorno ni navegador.
+
+### Grabar pasos (macro)
+En *Generar* elige **Capturas → Grabar pasos** y pulsa *Iniciar grabación*: se abre una ventana de Chrome/Edge con sesión iniciada en el formulario. Haz el flujo ahí; cada clic y campo tocado se guarda como un paso con su captura (no se guardan los valores escritos ni contraseñas; lo que se haga fuera de esa ventana no se graba). Puedes pausar, terminar (o cerrar la ventana), y luego borrar, reordenar o editar la nota de cada paso antes de generar. Ojo: las acciones se ejecutan de verdad en el entorno.
 
 ### Configuración
 - **Repositorio**: ruta local del clon y rama (`origin/develop`).

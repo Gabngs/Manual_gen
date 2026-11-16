@@ -56,13 +56,23 @@ dialog h3{margin:0;font-size:16px}
 .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 .empty{color:var(--mut);padding:20px;text-align:center}
 .hide{display:none}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--mut)}
+.drop.on{border-color:var(--pri);background:color-mix(in srgb,var(--pri) 8%,transparent)}
+.lnk{color:var(--pri);cursor:pointer;text-decoration:underline}
+.sub{display:flex;gap:10px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:var(--bg)}
+.sub img{width:96px;height:60px;object-fit:cover;border-radius:5px;border:1px solid var(--line)}
+.sub .n{font-weight:650;width:22px;text-align:center}
+.sub input{flex:1}
+.sub .asa{cursor:grab;color:var(--mut)}
+.sub.arr{opacity:.4}
 </style>
 </head>
 <body>
 <header>
   <h1>Manual Gen</h1>
-  <span class="chip" id="chipClaude"><span class="dot"></span><span id="chipTxt">Claude…</span></span>
-  <button class="b" id="btnLogin" hidden>Iniciar sesión con Claude</button>
+  <select id="selIA" style="width:auto" title="IA para redactar"></select>
+  <span class="chip" id="chipClaude"><span class="dot"></span><span id="chipTxt">IA…</span></span>
+  <button class="b" id="btnLogin" hidden>Iniciar sesión</button>
   <button class="b" id="btnLogout" hidden>Cerrar sesión</button>
   <span class="sp"></span>
   <span class="chip" id="chipEnv"></span>
@@ -81,13 +91,31 @@ dialog h3{margin:0;font-size:16px}
         <div class="f" style="flex:0 0 auto;min-width:0">
           <label>Redacción</label>
           <div class="seg" id="segModo">
-            <label id="lblClaude"><input type="radio" name="modo" value="claude" checked>Claude Code</label>
+            <label id="lblClaude"><input type="radio" name="modo" value="ia" checked><span id="lblIA">IA</span></label>
             <label><input type="radio" name="modo" value="plantillas">Plantillas</label>
           </div>
         </div>
-        <div class="f"><label>Entorno (capturas)</label><select id="selEnv"></select></div>
+        <div class="f" style="flex:0 0 auto;min-width:0">
+          <label>Capturas</label>
+          <div class="seg"><label><input type="radio" name="origen" value="auto" checked>Automáticas</label><label><input type="radio" name="origen" value="grabar">Grabar pasos</label><label><input type="radio" name="origen" value="subidas">Subir imágenes</label></div>
+        </div>
+        <div class="f" id="fEnv"><label>Entorno (capturas)</label><select id="selEnv"></select></div>
         <div class="f"><label>BookStack (destino)</label><select id="selBs"></select></div>
         <button class="b p" id="btnGen">Generar</button>
+      </div>
+      <div id="zonaGrab" class="hide" style="margin-top:14px">
+        <div class="row" style="align-items:center">
+          <button class="b p" id="btnGrabIni" type="button">● Iniciar grabación</button>
+          <button class="b" id="btnGrabPausa" type="button" hidden>Pausar</button>
+          <button class="b" id="btnGrabFin" type="button" hidden>Terminar</button>
+          <span class="msg" id="grabMsg" style="margin:0"></span>
+        </div>
+        <p class="hint">Se abre una ventana de Chrome/Edge ya con sesión en el formulario. Haz el flujo ahí: cada clic y campo tocado queda como un paso con su captura (los valores escritos y las contraseñas no se guardan). Lo que hagas fuera de esa ventana no se graba. Ojo: lo que hagas se ejecuta de verdad en el entorno; evita guardar datos si no quieres dejar registros. Al terminar puedes borrar, reordenar o editar la nota de cada paso.</p>
+      </div>
+      <div id="zonaSub" class="hide" style="margin-top:14px">
+        <div id="drop" class="drop">Arrastra aquí las capturas (PNG, JPG o WebP) o <label class="lnk">elígelas<input type="file" id="fileSub" accept="image/png,image/jpeg,image/webp" multiple hidden></label>. También puedes pegarlas con Ctrl+V.</div>
+        <div id="listaSub"></div>
+        <p class="hint">Van <b>en orden</b>: cada una es un paso del manual (arrástralas o usa ▲▼). La nota es opcional y ayuda a la IA a explicar bien cada paso. Si el formulario tiene componente y repositorio configurados, la IA también lee el código.</p>
       </div>
       <p class="hint" id="hintModo"></p>
       <p class="msg bad" id="hintCfg" hidden>Primero registra un <b>entorno</b> (URL, usuario y contraseña) y una <b>conexión BookStack</b> (URL, Token ID y Secret) en la pestaña <b>Configuración</b>. Se guardan una sola vez junto al programa.</p>
@@ -160,37 +188,46 @@ document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
 
 // ---------- carga ----------
 async function cargar() {
-  const claude = S?.claude ?? { instalado: true, sesion: false, cargando: true };
-  S = { ...(await api('/api/estado')), claude };
+  const ia = S?.ia ?? null;
+  S = { ...(await api('/api/estado')), ia };
   pintar();
-  refrescarClaude();
+  refrescarIA();
 }
-async function refrescarClaude() {
-  try { S.claude = await api('/api/claude'); pintar(); } catch { /* sin Claude */ }
+async function refrescarIA() {
+  try { S.ia = await api('/api/ia'); pintar(); } catch { /* sin IA */ }
 }
 function pintar() {
-  const { settings: s, manuales: ms, claude: c } = S;
-  // claude
+  const { settings: s, manuales: ms } = S;
+  // IA
+  const lista = S.ia ?? { claude: { nombre: 'Claude' }, gemini: { nombre: 'Gemini' }, chatgpt: { nombre: 'ChatGPT' } };
+  if (!$('#selIA').options.length) {
+    $('#selIA').innerHTML = Object.entries(lista).map(([id, p]) => `<option value="${id}">${esc(p.nombre)}</option>`).join('');
+    try { const g = localStorage.getItem('ia'); if (g && lista[g]) $('#selIA').value = g; } catch {}
+  }
+  const c = lista[iaActual()]; const cargando = !S.ia;
   $('#chipClaude').className = 'chip ' + (c.sesion ? 'ok' : 'bad');
-  $('#chipTxt').textContent = c.cargando ? 'Comprobando Claude…' : !c.instalado ? 'Claude Code no instalado' : c.sesion ? 'Claude conectado (sesión temporal)' : 'Claude sin sesión';
-  $('#btnLogin').hidden = !c.instalado || c.sesion;
-  $('#btnLogout').hidden = !c.sesion;
-  const hayClaude = c.instalado && c.sesion;
-  $('#lblClaude').classList.toggle('off', !hayClaude);
-  document.querySelector('input[value=claude]').disabled = !hayClaude;
-  if (!hayClaude) document.querySelector('input[value=plantillas]').checked = true;
-  $('#hintModo').textContent = hayClaude
-    ? 'Claude Code redacta con lenguaje natural usando tu suscripción (sin costo extra de API). Plantillas es instantáneo y más literal.'
-    : (c.instalado ? 'Opcional: inicia sesión con Claude para redactar con IA. La sesión dura solo mientras este programa esté abierto. Sin sesión se usan plantillas.' : 'Claude Code no está instalado en este equipo: se usarán plantillas. (Para IA instala Claude Code: https://claude.com/claude-code)');
+  $('#chipTxt').textContent = cargando ? 'Comprobando IA…' : !c.instalado ? `${c.nombre} no instalado` : c.sesion ? `${c.nombre} conectado (sesión temporal)` : `${c.nombre} sin sesión`;
+  $('#btnLogin').hidden = cargando || !c.instalado || c.sesion;
+  $('#btnLogout').hidden = cargando || !c.sesion;
+  const hayIA = !cargando && c.instalado && c.sesion;
+  $('#lblIA').textContent = c.nombre;
+  $('#lblClaude').classList.toggle('off', !hayIA);
+  document.querySelector('input[value=ia]').disabled = !hayIA;
+  if (!hayIA) document.querySelector('input[value=plantillas]').checked = true;
+  else if (!document.querySelector('input[name=modo]:checked')) document.querySelector('input[value=ia]').checked = true;
+  $('#hintModo').textContent = hayIA
+    ? `${c.nombre} redacta con lenguaje natural usando tu suscripción (sin costo extra de API). Plantillas es instantáneo y más literal.`
+    : (c.instalado || cargando ? `Opcional: inicia sesión con ${c.nombre} para redactar con IA. La sesión dura solo mientras este programa esté abierto. Sin sesión se usan plantillas.` : `${c.nombre} no está instalado en este equipo: se usarán plantillas. Para usarlo instala su herramienta: ${c.instalar}`);
   // selects
   const sel = (el, arr, val, lbl) => { el.innerHTML = arr.map((x) => `<option value="${esc(x.id ?? x.clave)}" ${(x.id ?? x.clave) === val ? 'selected' : ''}>${esc(lbl(x))}</option>`).join(''); };
   const prev = $('#selManual').value;
   sel($('#selManual'), ms, prev || ms[0]?.clave, (m) => m.pagina);
   sel($('#selEnv'), s.entornos, s.entornoActivo, (e) => e.nombre);
   sel($('#selBs'), s.bookstacks, s.bookstackActivo, (b) => b.nombre);
-  const falta = !s.entornos.length || !s.bookstacks.length;
+  const falta = !s.bookstacks.length || (!s.entornos.length && origenSel() !== 'subidas');
   $('#btnGen').disabled = falta;
   $('#hintCfg').hidden = !falta;
+  $('#fEnv').classList.toggle('hide', origenSel() === 'subidas');
   const env = s.entornos.find((e) => e.id === s.entornoActivo);
   $('#chipEnv').innerHTML = env ? `<span class="dot"></span>${esc(env.nombre)} · ${esc(env.usuario)}` : 'Sin entorno';
   // manuales
@@ -202,15 +239,17 @@ function pintar() {
   mostrarMeta();
 }
 
-// ---------- claude ----------
+// ---------- IA (Claude / Gemini / ChatGPT) ----------
+const iaActual = () => $('#selIA').value;
+$('#selIA').onchange = () => { try { localStorage.setItem('ia', iaActual()); } catch { /* sin almacenamiento */ } pintar(); };
 $('#btnLogin').onclick = async () => {
-  await api('/api/claude/login', {});
+  const id = iaActual();
+  await api('/api/ia/login', { id });
   $('#chipTxt').textContent = 'Esperando inicio de sesión…';
-  const t = setInterval(async () => { const c = await api('/api/claude'); if (c.sesion) { clearInterval(t); S.claude = c; pintar(); } }, 3000);
+  const t = setInterval(async () => { S.ia = await api('/api/ia'); if (S.ia[id].sesion) clearInterval(t); pintar(); }, 3000);
   setTimeout(() => clearInterval(t), 300000);
 };
-
-$('#btnLogout').onclick = async () => { await api('/api/claude/logout', {}); await cargar(); };
+$('#btnLogout').onclick = async () => { await api('/api/ia/logout', { id: iaActual() }); S.ia = await api('/api/ia'); pintar(); };
 
 // ---------- generar ----------
 let jobPoll;
@@ -241,7 +280,12 @@ $('#btnGen').onclick = async () => {
   try {
     await guardarSeleccion();
     const modo = document.querySelector('input[name=modo]:checked').value;
-    const { job } = await api('/api/generar', { clave, modo });
+    const origen = origenSel() === 'auto' ? 'auto' : 'subidas'; // grabar = pasos ya convertidos en capturas
+    if (origen === 'subidas') {
+      if (!SUB.length) throw new Error('Añade al menos una captura.');
+      await api('/api/capturas', { clave, imagenes: SUB.map((x) => ({ data: x.data, nota: x.nota })) });
+    }
+    const { job } = await api('/api/generar', { clave, modo, ia: iaActual(), origen });
     seguirJob(job, addLog, async () => { $('#btnGen').disabled = false; await mostrarMeta(); });
   } catch (e) { addLog('ERROR: ' + e.message); $('#btnGen').disabled = false; }
 };
@@ -252,7 +296,7 @@ async function mostrarMeta() {
   const meta = await api('/api/meta/' + clave).catch(() => null);
   $('#cardPrev').classList.toggle('hide', !meta);
   if (!meta) return;
-  $('#meta').textContent = `Generado ${new Date(meta.fecha).toLocaleString()} · redacción: ${meta.usado === 'claude' ? 'Claude Code' : 'plantillas'} · ${meta.shots.length} capturas`;
+  $('#meta').textContent = `Generado ${new Date(meta.fecha).toLocaleString()} · redacción: ${({ claude: 'Claude', gemini: 'Gemini', chatgpt: 'ChatGPT' })[meta.usado] ?? 'plantillas'} · ${meta.shots.length} capturas`;
   $('#prev').src = '/preview/' + clave + '?t=' + Date.now();
 }
 
@@ -368,6 +412,77 @@ document.addEventListener('click', async (e) => {
   }
 });
 $('#btnSaveCfg').onclick = async () => { await guardarCfg(); $('#cfgMsg').className = 'msg ok'; $('#cfgMsg').textContent = 'Guardado'; setTimeout(() => ($('#cfgMsg').textContent = ''), 2500); };
+
+// ---------- capturas subidas ----------
+const origenSel = () => document.querySelector('input[name=origen]:checked').value;
+let SUB = []; // [{ data (dataURL), nota }]
+document.querySelectorAll('input[name=origen]').forEach((r) => r.onchange = () => { const o = origenSel(); $('#zonaSub').classList.toggle('hide', o === 'auto'); $('#zonaGrab').classList.toggle('hide', o !== 'grabar'); pintar(); });
+const leer = (f) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
+async function agregarImagenes(files) {
+  for (const f of [...files].filter((x) => /^image\/(png|jpeg|webp)$/.test(x.type))) {
+    SUB.push({ data: await leer(f), nota: '' });
+  }
+  pintarSub();
+}
+function pintarSub() {
+  $('#listaSub').innerHTML = SUB.map((x, i) => `<div class="sub" draggable="true" data-i="${i}"><span class="asa">⠿</span><span class="n">${i + 1}</span><img src="${x.data}" alt="Captura ${i + 1}"><input data-nota="${i}" placeholder="Nota del paso (opcional): p. ej. Ventana al pulsar Nuevo Registro" value="${esc(x.nota)}"><button class="b" data-up="${i}" ${i ? '' : 'disabled'}>▲</button><button class="b" data-dn="${i}" ${i < SUB.length - 1 ? '' : 'disabled'}>▼</button><button class="b d" data-rm="${i}">✕</button></div>`).join('');
+}
+const mover = (a, b) => { if (b < 0 || b >= SUB.length) return; SUB.splice(b, 0, SUB.splice(a, 1)[0]); pintarSub(); };
+$('#fileSub').onchange = (e) => { agregarImagenes(e.target.files); e.target.value = ''; };
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('on'); }));
+['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('on'); }));
+drop.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) agregarImagenes(e.dataTransfer.files); });
+document.addEventListener('paste', (e) => { if (origenSel() === 'subidas' && e.clipboardData.files.length) agregarImagenes(e.clipboardData.files); });
+$('#listaSub').addEventListener('input', (e) => { if (e.target.dataset.nota !== undefined) SUB[+e.target.dataset.nota].nota = e.target.value; });
+$('#listaSub').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const d = b.dataset;
+  if (d.rm !== undefined) { SUB.splice(+d.rm, 1); pintarSub(); }
+  if (d.up !== undefined) mover(+d.up, +d.up - 1);
+  if (d.dn !== undefined) mover(+d.dn, +d.dn + 1);
+});
+let arr = null; // índice de la captura que se está arrastrando
+$('#listaSub').addEventListener('dragstart', (e) => { const r = e.target.closest?.('.sub'); if (!r) return; arr = +r.dataset.i; r.classList.add('arr'); });
+$('#listaSub').addEventListener('dragover', (e) => { if (arr !== null) e.preventDefault(); });
+$('#listaSub').addEventListener('drop', (e) => { const r = e.target.closest('.sub'); if (arr !== null && r) { e.preventDefault(); mover(arr, +r.dataset.i); } arr = null; });
+$('#listaSub').addEventListener('dragend', () => { arr = null; pintarSub(); });
+
+// ---------- grabador de pasos ----------
+let grabTimer = null, grabN = 0;
+function grabUI(estado, msg) {
+  const activo = estado === 'grabando' || estado === 'pausado';
+  $('#btnGrabIni').hidden = activo;
+  $('#btnGrabPausa').hidden = !activo; $('#btnGrabFin').hidden = !activo;
+  $('#btnGrabPausa').textContent = estado === 'pausado' ? 'Reanudar' : 'Pausar';
+  $('#grabMsg').className = 'msg' + (estado === 'grabando' ? ' ok' : '');
+  $('#grabMsg').textContent = msg ?? ({ grabando: `● Grabando… ${grabN} paso(s)`, pausado: `Pausado · ${grabN} paso(s)`, terminado: `Grabación terminada · ${grabN} paso(s)` }[estado] ?? '');
+}
+async function sondearGrabacion() {
+  try {
+    const e = await api('/api/grabar/estado?desde=' + grabN);
+    for (const p of e.pasos) SUB.push({ data: p.data, nota: p.texto });
+    if (e.pasos.length) { grabN = e.total; pintarSub(); }
+    grabUI(e.estado, e.aviso || undefined);
+    if (e.estado === 'terminado' || e.estado === 'inactivo') clearInterval(grabTimer);
+  } catch { clearInterval(grabTimer); }
+}
+$('#btnGrabIni').onclick = async () => {
+  const clave = $('#selManual').value;
+  if (!clave) return;
+  if (SUB.length && !confirm('Ya hay capturas en la lista. ¿Reemplazarlas por la nueva grabación?')) return;
+  SUB = []; grabN = 0; pintarSub();
+  $('#btnGrabIni').disabled = true; $('#grabMsg').className = 'msg'; $('#grabMsg').textContent = 'Abriendo el navegador e iniciando sesión…';
+  try {
+    await guardarSeleccion();
+    await api('/api/grabar/iniciar', { clave });
+    clearInterval(grabTimer); grabTimer = setInterval(sondearGrabacion, 1000);
+    sondearGrabacion();
+  } catch (e) { $('#grabMsg').className = 'msg bad'; $('#grabMsg').textContent = e.message; }
+  $('#btnGrabIni').disabled = false;
+};
+$('#btnGrabPausa').onclick = async () => { await api('/api/grabar/pausa', { pausa: $('#btnGrabPausa').textContent === 'Pausar' }); sondearGrabacion(); };
+$('#btnGrabFin').onclick = async () => { await api('/api/grabar/terminar', {}); await sondearGrabacion(); grabUI('terminado'); clearInterval(grabTimer); };
 
 cargar();
 </script>

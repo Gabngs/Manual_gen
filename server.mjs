@@ -3,8 +3,10 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { exec } from 'node:child_process';
 import { asset, OUT, loadSettings, saveSettings, loadManuales, saveManuales, publicSettings, mergeSettings } from './lib/config.mjs';
-import { claudeStatus, claudeLogin, iniciarSesionAislada, cerrarSesion, borrarSesionAlSalir } from './lib/claude.mjs';
-import { generar, leerMeta, conImagenes } from './lib/generator.mjs';
+import { iniciarSesionAislada, borrarSesionAlSalir } from './lib/claude.mjs';
+import { iniciarIA, borrarIAAlSalir, estadoTodos, loginIA, logoutIA, PROVEEDORES } from './lib/ia.mjs';
+import { generar, leerMeta, conImagenes, guardarSubidas, mimeDe } from './lib/generator.mjs';
+import { iniciarGrabacion, estadoGrabacion, pausarGrabacion, terminarGrabacion } from './lib/grabador.mjs';
 import { publicar, probar, libros, capitulos } from './lib/bookstack.mjs';
 
 const PORT = Number(process.env.PORT) || 4317;
@@ -27,6 +29,7 @@ function lanzar(fn) {
   return id;
 }
 
+const idIA = (id) => { if (!PROVEEDORES.some((p) => p.id === id)) throw new Error('Proveedor de IA desconocido'); };
 const manualDe = (clave) => loadManuales().find((m) => m.clave === clave);
 const bookstackActivo = (s) => s.bookstacks.find((b) => b.id === s.bookstackActivo);
 
@@ -38,7 +41,7 @@ const activo = () => {
 
 const rutas = {
   'GET /api/estado': async () => ({ settings: publicSettings(loadSettings()), manuales: loadManuales() }),
-  'GET /api/claude': async () => claudeStatus(),
+  'GET /api/ia': async () => estadoTodos(),
   'POST /api/settings': async (b) => { saveSettings(mergeSettings(loadSettings(), b)); return { ok: true }; },
   'POST /api/manuales': async (b) => {
     if (!safe(b.clave)) throw new Error('La clave solo admite letras, números, - y _');
@@ -47,13 +50,30 @@ const rutas = {
     return { ok: true };
   },
   'POST /api/manuales/borrar': async (b) => { saveManuales(loadManuales().filter((m) => m.clave !== b.clave)); return { ok: true }; },
-  'POST /api/claude/login': async () => { claudeLogin(); return { ok: true }; },
-  'POST /api/claude/logout': async () => { cerrarSesion(); return { ok: true }; },
+  'POST /api/ia/login': async (b) => { idIA(b.id); loginIA(b.id); return { ok: true }; },
+  'POST /api/ia/logout': async (b) => { idIA(b.id); logoutIA(b.id); return { ok: true }; },
+  'POST /api/grabar/iniciar': async (b) => {
+    const manual = manualDe(b.clave);
+    const settings = loadSettings();
+    const entorno = settings.entornos.find((e) => e.id === settings.entornoActivo);
+    if (!manual) throw new Error('Manual no encontrado');
+    if (!entorno) throw new Error('Elige un entorno en Configuración.');
+    await iniciarGrabacion({ manual, entorno, log: () => {} });
+    return { ok: true };
+  },
+  'GET /api/grabar/estado': async (_b, url) => estadoGrabacion(Number(url.searchParams.get('desde')) || 0),
+  'POST /api/grabar/pausa': async (b) => { pausarGrabacion(!!b.pausa); return { ok: true }; },
+  'POST /api/grabar/terminar': async () => { await terminarGrabacion(); return { ok: true }; },
+  'POST /api/capturas': async (b) => {
+    if (!manualDe(b.clave)) throw new Error('Manual no encontrado');
+    return { ok: true, total: guardarSubidas(b.clave, b.imagenes) };
+  },
   'POST /api/generar': async (b) => {
     const manual = manualDe(b.clave);
     if (!manual) throw new Error('Manual no encontrado');
     const settings = loadSettings();
-    return { job: lanzar((log) => generar({ manual, settings, modo: b.modo, log })) };
+    if (b.modo === 'ia') idIA(b.ia);
+    return { job: lanzar((log) => generar({ manual, settings, modo: b.modo, ia: b.ia, origen: b.origen, log })) };
   },
   'POST /api/publicar': async (b) => {
     const manual = manualDe(b.clave);
@@ -72,8 +92,9 @@ const rutas = {
 };
 
 iniciarSesionAislada();
+iniciarIA();
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) process.on(sig, () => process.exit(0));
-process.on('exit', borrarSesionAlSalir); // al cerrar el programa se cierra la sesión de Claude
+process.on('exit', () => { borrarSesionAlSalir(); borrarIAAlSalir(); }); // al cerrar el programa se cierran las sesiones de IA
 
 createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
@@ -96,7 +117,7 @@ createServer(async (req, res) => {
     }
     if ((m = p.match(/^\/out\/([\w-]+)\/([\w.-]+)$/))) {
       const f = join(OUT, m[1], basename(m[2]));
-      return existsSync(f) ? send(res, 200, readFileSync(f), 'image/png') : send(res, 404, 'no existe', 'text/plain');
+      return existsSync(f) ? send(res, 200, readFileSync(f), mimeDe(f)) : send(res, 404, 'no existe', 'text/plain');
     }
     if (p === '/' || p === '/index.html') return send(res, 200, asset('index.html'), MIME['.html']);
     send(res, 404, 'no encontrado', 'text/plain');
