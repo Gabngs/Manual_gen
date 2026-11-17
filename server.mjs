@@ -7,6 +7,7 @@ import { iniciarSesionAislada, borrarSesionAlSalir } from './lib/claude.mjs';
 import { iniciarIA, borrarIAAlSalir, estadoTodos, loginIA, logoutIA, PROVEEDORES } from './lib/ia.mjs';
 import { generar, leerMeta, conImagenes, guardarSubidas, mimeDe } from './lib/generator.mjs';
 import { iniciarGrabacion, estadoGrabacion, pausarGrabacion, terminarGrabacion } from './lib/grabador.mjs';
+import { exportarPdf, exportarDocx } from './lib/exportar.mjs';
 import { publicar, probar, libros, capitulos } from './lib/bookstack.mjs';
 
 const PORT = Number(process.env.PORT) || 4317;
@@ -111,6 +112,20 @@ createServer(async (req, res) => {
       const meta = leerMeta(m[1]);
       const mapa = Object.fromEntries(meta.shots.map((s) => [s.id, `/out/${m[1]}/${s.file}`]));
       return send(res, 200, `<!doctype html><meta charset="utf-8"><style>body{font:15px/1.6 system-ui,sans-serif;margin:24px;max-width:960px;color:#1d2433}img{border:1px solid #d9dee8;border-radius:6px;margin:8px 0}</style>${conImagenes(meta.cuerpo, mapa)}`, MIME['.html']);
+    }
+    if ((m = p.match(/^\/api\/exportar\/([\w-]+)\/(pdf|docx)$/))) {
+      const manual = manualDe(m[1]);
+      if (!manual) throw new Error('Manual no encontrado');
+      try { leerMeta(m[1]); } catch { throw new Error('Primero genera el manual para poder exportarlo.'); }
+      const nombre = (manual.pagina || m[1]).replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || m[1];
+      const pdf = m[2] === 'pdf';
+      const buf = pdf ? await exportarPdf(m[1], manual.pagina) : exportarDocx(m[1], manual.pagina);
+      res.writeHead(200, {
+        'Content-Type': pdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="manual.${m[2]}"; filename*=UTF-8''${encodeURIComponent(`Manual ${nombre}.${m[2]}`)}`,
+        'Cache-Control': 'no-store',
+      });
+      return res.end(buf);
     }
     if ((m = p.match(/^\/api\/meta\/([\w-]+)$/))) {
       try { const { cuerpo, ...resto } = leerMeta(m[1]); return send(res, 200, resto); } catch { return send(res, 200, null); }
