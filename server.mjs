@@ -18,15 +18,22 @@ const send = (res, code, body, type = 'application/json; charset=utf-8') => {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 };
-const readBody = (req) => new Promise((ok) => { let b = ''; req.on('data', (d) => (b += d)); req.on('end', () => ok(b ? JSON.parse(b) : {})); });
+const MAX_BODY = 256 * 1024 * 1024; // las capturas subidas viajan en base64
+const readBody = (req) => new Promise((ok, no) => {
+  const partes = []; let n = 0;
+  req.on('data', (d) => { n += d.length; if (n > MAX_BODY) { no(new Error('La petición es demasiado grande')); req.destroy(); } else partes.push(d); });
+  req.on('end', () => { try { const b = Buffer.concat(partes).toString('utf8'); ok(b ? JSON.parse(b) : {}); } catch { no(new Error('Petición inválida (JSON mal formado)')); } });
+  req.on('error', no);
+});
 const safe = (s) => /^[\w-]+$/.test(s ?? '');
 
 function lanzar(fn) {
   const id = Math.random().toString(36).slice(2, 10);
   const job = { log: [], estado: 'corriendo' };
   jobs.set(id, job);
+  for (const [k, j] of jobs) if (j.fin && Date.now() - j.fin > 3600000) jobs.delete(k); // se descartan las tareas terminadas hace más de 1 h
   const log = (m) => job.log.push(m);
-  fn(log).then((r) => { job.resultado = r; job.estado = 'ok'; }).catch((e) => { job.error = e.message; job.estado = 'error'; log(`ERROR: ${e.message}`); });
+  fn(log).then((r) => { job.resultado = r; job.estado = 'ok'; }).catch((e) => { job.error = e.message; job.estado = 'error'; log(`ERROR: ${e.message}`); }).finally(() => { job.fin = Date.now(); });
   return id;
 }
 
